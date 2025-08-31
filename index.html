@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinetra: Fraud Detection Prototype</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+        .container { background: #f4f4f4; padding: 30px; border-radius: 8px; }
+        .input-group { display: flex; margin-bottom: 20px; }
+        #url-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        #scan-button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #result-box { margin-top: 20px; padding: 20px; border-radius: 8px; border: 1px solid #ddd; display: none; }
+        .risk-high { background: #ffe6e6; border-color: #ff3333; }
+        .risk-medium { background: #fff8e6; border-color: #ffcc00; }
+        .risk-low { background: #e6ffe6; border-color: #33cc33; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Trinetra: Fraud Detection Prototype</h1>
+        <p>Enter a URL to check if it is a fake, phishing, or scam website.</p>
+        
+        <div class="input-group">
+            <input type="text" id="url-input" placeholder="e.g., https://www.paypal-login.com">
+            <button id="scan-button">Scan</button>
+        </div>
+
+        <div id="result-box">
+            <h3>Scan Result:</h3>
+            <p id="status-label"></p>
+            <p><strong>Risk Score:</strong> <span id="risk-score"></span></p>
+            <p><strong>Reasons:</strong></p>
+            <ul id="reasons-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('scan-button').addEventListener('click', async () => {
+            const url = document.getElementById('url-input').value;
+            const resultBox = document.getElementById('result-box');
+            
+            if (!url) {
+                alert("Please enter a URL.");
+                return;
+            }
+
+            // Show a loading state
+            resultBox.style.display = 'block';
+            document.getElementById('status-label').innerText = 'Scanning...';
+            document.getElementById('risk-score').innerText = '';
+            document.getElementById('reasons-list').innerHTML = '';
+            resultBox.className = 'risk-low'; // Reset class
+
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    document.getElementById('status-label').innerText = `Error: ${result.error}`;
+                    resultBox.className = 'risk-medium';
+                    return;
+                }
+
+                document.getElementById('status-label').innerText = result.status;
+                document.getElementById('risk-score').innerText = result.score;
+                
+                const reasonsList = document.getElementById('reasons-list');
+                reasonsList.innerHTML = '';
+                result.reasons.forEach(reason => {
+                    const li = document.createElement('li');
+                    li.innerText = reason;
+                    reasonsList.appendChild(li);
+                });
+
+                // Update box color based on risk status
+                if (result.score > 10) {
+                    resultBox.className = 'risk-high';
+                } else if (result.score >= 5) {
+                    resultBox.className = 'risk-medium';
+                } else {
+                    resultBox.className = 'risk-low';
+                }
+
+            } catch (error) {
+                document.getElementById('status-label').innerText = 'Failed to connect to the server.';
+                resultBox.className = 'risk-high';
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
